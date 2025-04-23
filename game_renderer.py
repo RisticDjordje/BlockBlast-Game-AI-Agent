@@ -302,19 +302,21 @@ class BlockGameRenderer:
                                 pygame.draw.rect(self.main_screen, (0, 0, 0), bg_square)
                                 pygame.draw.rect(self.main_screen, shape.color, square)
 
-                    # Draw key hint
-                    if cshape == 0:
-                        key_text = "E"
-                    elif cshape == 1:
-                        key_text = "R"
-                    else:
-                        key_text = "T"
+                    # No longer draw the hint 
+                    if False:
+                        # Draw key hint
+                        if cshape == 0:
+                            key_text = "E"
+                        elif cshape == 1:
+                            key_text = "R"
+                        else:
+                            key_text = "T"
 
-                    text = self.font.render(key_text, True, (0, 0, 0))
-                    text_rect = text.get_rect(
-                        center=(center_x, center_y[cshape] - square_side * 1.5)
-                    )
-                    self.main_screen.blit(text, text_rect)
+                        text = self.font.render(key_text, True, (0, 0, 0))
+                        text_rect = text.get_rect(
+                            center=(center_x, center_y[cshape] - square_side * 1.5)
+                        )
+                        self.main_screen.blit(text, text_rect)
 
     def draw_cursor(self):
         """Draw the chosen shape at the cursor position for human play."""

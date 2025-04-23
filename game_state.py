@@ -364,18 +364,20 @@ class BlockGameState:
         # Get the shape and its dimensions
         shape = self.current_shapes[shape_idx]
         size = [len(shape.form), len(shape.form[0])]
-
+        
+        volume = 0
         # Place the shape on the grid
         for i in range(size[0]):
             for j in range(size[1]):
                 if shape.form[i][j]:
+                    volume += 1
                     self.grid[row + i][col + j] = shape.color
 
         # Remove the used shape
         self.current_shapes[shape_idx] = 0
 
         # Update the grid (clear lines, calculate score)
-        lines_cleared = self.update_grid()
+        lines_cleared = self.update_grid(volume)
 
         # Update combo streak tracking
         if lines_cleared > 0:
@@ -403,10 +405,13 @@ class BlockGameState:
 
         return is_valid_placement, new_shapes_generated
 
-    def update_grid(self):
+    def update_grid(self, volume_placed=0):
         """Clear completed rows/columns and update score."""
         self.last_lines_cleared = 0
         score_before = self.score
+
+        # Add block volume to score
+        self.score += volume_placed
 
         # Find rows and columns to delete
         rows_to_delete = []
@@ -471,6 +476,10 @@ class BlockGameState:
 
         # Track score change for reward calculation
         self.last_action_score = self.score - score_before
+        
+        # Update highest score
+        if self.score > self.highest_score:
+            self.highest_score = self.score
 
         return lines_cleared
 
@@ -557,7 +566,7 @@ class BlockGameState:
 
     def reset(self):
         """Reset the game state."""
-        if self.score > self.highest_score:
+        if self.score >= self.highest_score:
             self.save_score(self.score)
 
         self.grid = [[0, 0, 0, 0, 0, 0, 0, 0] for _ in range(8)]
