@@ -469,7 +469,7 @@ class BlockGameRenderer:
         """Draw the current score and high score."""
         dims = self.calculate_grid_dimensions()
         grid_padding = dims["grid_padding"]
-        curr_main_width = self.main_screen.get_size()[0]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
 
         # Draw high score
         font_size = int(grid_padding / 2)
@@ -479,11 +479,11 @@ class BlockGameRenderer:
         except:
             font_time = pygame.font.SysFont("Arial", font_size)
 
-        text_time_title = font_time.render("Time Used", True, (255, 215, 0))
+        text_time_title = font_time.render("Time", True, (255, 215, 0))
         text_time_used = font_time.render(str(self.game_state.get_time()), True, (255, 215, 0))
 
-        self.main_screen.blit(text_time_title, (curr_main_width // 4 * 3, grid_padding // 6))
-        self.main_screen.blit(text_time_used, (curr_main_width  // 10 * 9, grid_padding // 1.3))
+        self.main_screen.blit(text_time_title, (grid_padding // 3, curr_main_height // 2))
+        self.main_screen.blit(text_time_used, (grid_padding // 3, curr_main_height // 2 + grid_padding // 2))
 
     def draw_combos(self):
         """Draw the combo information."""
