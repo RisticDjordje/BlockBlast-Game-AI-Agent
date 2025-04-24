@@ -1,6 +1,7 @@
 import copy
 import os
 import random
+from datetime import datetime
 
 
 class BlockGameState:
@@ -73,6 +74,7 @@ class BlockGameState:
         self.score = 0
         self.displayed_score = 0  # For visualization smoothing
         self.highest_score = self.get_high_score()
+        self.start_time = datetime.now()
 
         # Game state tracking
         self.game_over = False
@@ -449,25 +451,29 @@ class BlockGameState:
         self.last_lines_cleared = lines_cleared
 
         if lines_cleared:
+            self.combos[0] = []
+
             # Calculate bonus based on combos and number of lines cleared
             bonus = lines_cleared * 10 * (self.combos[1] + 1)
             if lines_cleared > 2:
                 bonus *= lines_cleared - 1
 
             # Add combo information
-            combo = self.combo_names.get(lines_cleared, "MULTI ") + f"CLEAR +{bonus}"
+            # combo = self.combo_names.get(lines_cleared, "MULTI ") + f"CLEAR"
+
+            combo = f"{lines_cleared} CLEAR"
             self.combos[0].insert(-1, combo)
 
             # Add all clear bonus
             if all_clear:
                 bonus += 300
-                self.combos[0].insert(-1, "ALL CLEAR +300")
+                self.combos[0].insert(-1, "ALL CLEAR")
 
             # Limit combo history
-            self.combos[0] = self.combos[0][-8:]
+            # self.combos[0] = self.combos[0][-8:]
 
             # Update combo count - increase by the number of rows and columns cleared
-            self.combos[1] += lines_cleared
+            self.combos[1] += 1 # lines_cleared
             self.combos[0][-1] = f"COMBO {self.combos[1]}"
             self.combo_streak = True
 
@@ -566,6 +572,14 @@ class BlockGameState:
         with open("high_score.txt", "w") as file:
             file.write(str(score))
 
+    def get_time(self):
+        """Get the elapsed time since the game started."""
+        if not self.start_time:
+            return 0
+
+        elapsed_time = datetime.now() - self.start_time
+        return int(elapsed_time.total_seconds())
+
     def reset(self):
         """Reset the game state."""
         if self.score >= self.highest_score:
@@ -582,3 +596,5 @@ class BlockGameState:
         self.last_action_score = 0
         self.last_lines_cleared = 0
         self.highest_score = self.get_high_score()
+        self.start_time = datetime.now()
+        

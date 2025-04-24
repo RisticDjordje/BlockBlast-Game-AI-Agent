@@ -77,6 +77,7 @@ class BlockGameRenderer:
         self.draw_grid()
         self.draw_shapes()
         self.draw_score()
+        self.draw_time()
         self.draw_combos()
 
         # Draw cursor for human play
@@ -464,6 +465,26 @@ class BlockGameRenderer:
         score_rect.center = (curr_main_width // 2, grid_padding // 2)
         self.main_screen.blit(score_text, score_rect)
 
+    def draw_time(self):
+        """Draw the current score and high score."""
+        dims = self.calculate_grid_dimensions()
+        grid_padding = dims["grid_padding"]
+        curr_main_width = self.main_screen.get_size()[0]
+
+        # Draw high score
+        font_size = int(grid_padding / 2)
+        font_time = self.font
+        try:
+            font_time = pygame.font.Font(r"Assets/LECO.ttf", font_size)
+        except:
+            font_time = pygame.font.SysFont("Arial", font_size)
+
+        text_time_title = font_time.render("Time Used", True, (255, 215, 0))
+        text_time_used = font_time.render(str(self.game_state.get_time()), True, (255, 215, 0))
+
+        self.main_screen.blit(text_time_title, (curr_main_width // 4 * 3, grid_padding // 6))
+        self.main_screen.blit(text_time_used, (curr_main_width  // 10 * 9, grid_padding // 1.3))
+
     def draw_combos(self):
         """Draw the combo information."""
         dims = self.calculate_grid_dimensions()
@@ -722,11 +743,9 @@ class BlockGameRenderer:
                 and not self.game_state.game_over
             ):
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                
                 for i in range(3):
                     shape = self.game_state.current_shapes[i]
                     if shape and hasattr(shape, "form") and hasattr(shape, "bound"):
-                        # print(f"Shape {i} bounds: {shape.bound}, {mouse_x}, {mouse_y}")
                         if (
                             shape.bound.collidepoint(mouse_x, mouse_y)
                             and i != self.chosen_shape
