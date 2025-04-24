@@ -22,7 +22,7 @@ class BlockGameRenderer:
 
         # Constants
         self.INIT_WIDTH = 1200
-        self.INIT_HEIGHT = 800
+        self.INIT_HEIGHT = 1000
         self.BACKGROUND_COLOR = (220, 220, 220)
         self.FPS = fps
         self.grid_line_width = 2
@@ -250,16 +250,17 @@ class BlockGameRenderer:
         """Draw the available shapes on the side of the screen."""
         dims = self.calculate_grid_dimensions()
         grid_pos_x = dims["grid_pos_x"]
+        grid_pos_y = dims["grid_pos_y"]
         grid_side = dims["grid_side"]
-        curr_main_height = self.main_screen.get_size()[1]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
 
         # Size of each square in the shapes
         square_side = grid_pos_x // 11.5
 
         # Position for the shapes on the right side
-        center_x = (grid_pos_x * 1.5) + (grid_side + 4)
-        shapes_margin = curr_main_height // 4
-        center_y = [shapes_margin, shapes_margin * 2, shapes_margin * 3]
+        shapes_margin = curr_main_width // 4
+        center_x = [shapes_margin, shapes_margin * 2, shapes_margin * 3]
+        center_y = (grid_pos_y * 1.5) + (grid_side + 4)
 
         # Draw each available shape
         for cshape in range(3):
@@ -275,16 +276,17 @@ class BlockGameRenderer:
                         continue
 
                     # Draw each block of the shape
+                    bounds = []
                     for i in range(size[0]):
                         for j in range(size[1]):
                             if shape.form[i][j]:
                                 pos_x = (
-                                    center_x
+                                    center_x[cshape]
                                     - (square_side * size[1] // 2)
                                     + j * (square_side + 2)
                                 )
                                 pos_y = (
-                                    center_y[cshape]
+                                    center_y
                                     - (square_side * size[0] // 2)
                                     + i * (square_side + 2)
                                 )
@@ -299,8 +301,18 @@ class BlockGameRenderer:
                                     square_side + 4,
                                     square_side + 4,
                                 )
+
                                 pygame.draw.rect(self.main_screen, (0, 0, 0), bg_square)
                                 pygame.draw.rect(self.main_screen, shape.color, square)
+
+                                bounds.append(square)
+
+                    shape.bound = pygame.Rect(
+                        min([b.left for b in bounds]),
+                        min([b.top for b in bounds]),
+                        max([b.right for b in bounds]) - min([b.left for b in bounds]),
+                        max([b.bottom for b in bounds]) - min([b.top for b in bounds]),
+                    )
 
                     # No longer draw the hint 
                     if False:
@@ -427,9 +439,9 @@ class BlockGameRenderer:
         except:
             font_highest = pygame.font.SysFont("Arial", font_size)
 
-        text_highest = font_highest.render("HIGH SCORE", True, (135, 135, 135))
+        text_highest = font_highest.render("HIGH SCORE", True, (255, 215, 0))
         text_highest_value = font_highest.render(
-            str(self.game_state.highest_score), True, (135, 135, 135)
+            str(self.game_state.highest_score), True, (255, 215, 0)
         )
         self.main_screen.blit(text_highest, (grid_padding // 3, grid_padding // 6))
         self.main_screen.blit(
@@ -446,7 +458,7 @@ class BlockGameRenderer:
         self.displayed_score = self.game_state.score
 
         score_text = font_score.render(
-            str(int(self.displayed_score)), True, (135, 135, 135)
+            str(int(self.displayed_score)), True, (255, 215, 0)
         )
         score_rect = score_text.get_rect()
         score_rect.center = (curr_main_width // 2, grid_padding // 2)
@@ -457,7 +469,7 @@ class BlockGameRenderer:
         dims = self.calculate_grid_dimensions()
         grid_padding = dims["grid_padding"]
         grid_pos_x = dims["grid_pos_x"]
-        curr_main_height = self.main_screen.get_size()[1]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
 
         # Setup combo display area
         combos_padding = grid_pos_x // 10
@@ -469,7 +481,7 @@ class BlockGameRenderer:
         combos_screen.fill(self.BACKGROUND_COLOR)
 
         # Position the combo display
-        combo_pos_x = (grid_pos_x / 2) - (combo_screen_x / 2)
+        combo_pos_x = curr_main_width - grid_pos_x + grid_padding / 4 # (grid_pos_x / 2) - (combo_screen_x / 2)
         combo_pos_y = (curr_main_height / 2) - (combo_screen_y / 2)
 
         # Draw each combo line
@@ -483,7 +495,7 @@ class BlockGameRenderer:
                 font_combo = pygame.font.SysFont("Arial", font_size)
 
             text_combo = font_combo.render(
-                self.game_state.combos[0][i], True, (135, 135, 135)
+                self.game_state.combos[0][i], True, (255, 215, 0)
             )
             combos_screen.blit(text_combo, (0, combo_screen_y - font_size * j))
             j += 1
@@ -646,6 +658,9 @@ class BlockGameRenderer:
         action_taken = None
 
         for event in pygame.event.get():
+
+            print(f"Event: {event}")
+            
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -704,10 +719,21 @@ class BlockGameRenderer:
             # Handle mouse click for placement
             elif (
                 event.type == pygame.MOUSEBUTTONDOWN
-                and self.chosen_shape != -1
                 and not self.game_state.game_over
             ):
-                if self.current_placement is not None:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                
+                for i in range(3):
+                    shape = self.game_state.current_shapes[i]
+                    if shape and hasattr(shape, "form") and hasattr(shape, "bound"):
+                        # print(f"Shape {i} bounds: {shape.bound}, {mouse_x}, {mouse_y}")
+                        if (
+                            shape.bound.collidepoint(mouse_x, mouse_y)
+                            and i != self.chosen_shape
+                        ):
+                            self.chosen_shape = i
+                 
+                if self.chosen_shape != -1 and self.current_placement is not None:
                     row, col = self.current_placement
                     action_taken = (self.chosen_shape, row, col)
 

@@ -473,6 +473,8 @@ class BlockGameState:
 
             # Update score
             self.score += bonus
+        else:
+            self.combos[0] = [f"COMBO {self.combos[1]}"]
 
         # Track score change for reward calculation
         self.last_action_score = self.score - score_before
