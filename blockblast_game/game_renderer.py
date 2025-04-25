@@ -23,7 +23,7 @@ class BlockGameRenderer:
 
         # Constants
         self.INIT_WIDTH = 1200
-        self.INIT_HEIGHT = 800
+        self.INIT_HEIGHT = 1000
         self.BACKGROUND_COLOR = (220, 220, 220)
         self.FPS = fps
         self.grid_line_width = 2
@@ -62,16 +62,20 @@ class BlockGameRenderer:
             self.have_custom_font = True
 
         # Visualization state
-        self.chosen_shape = -1
+        self.chosen_shape = -1  # For human play mode
         self.agent_thinking = False
         self.highlight_position = None
         self.displayed_score = 0
         self.game_over_alpha = 0
-        self.current_placement = None
+        self.current_placement = None  # For tracking placement position
+
+        # Fade transition variables
         self.fade_alpha = 0
         self.transition_in = False
         self.transition_out = False
         self.TRANSITION_SPEED = 15
+
+        # Add debug visualization
         self.debug_mode = False
         self._last_combo_count = len(self.game_state.combos[0])
 
@@ -93,27 +97,43 @@ class BlockGameRenderer:
         self.draw_grid()
         self.draw_shapes()
         self.draw_score()
+        self.draw_time()
         self.draw_combos()
 
+        # Draw cursor for human play
         if self.chosen_shape != -1:
             self.draw_cursor()
+
+        # Draw agent thinking visualization if enabled
         if self.agent_thinking:
             self.draw_agent_thinking()
+
+        # Draw game over overlay if the game is over
         if self.game_state.game_over:
             self.draw_game_over()
+
+        # Handle transition effects
         if self.transition_in:
             self.fade_in()
         elif self.transition_out:
             self.fade_out()
+
+        # Draw debug info if enabled
         if self.debug_mode and self.current_placement:
             self.draw_debug_info()
 
+        # Update display
         pygame.display.flip()
+
+        # Control frame rate
         self.clock.tick(self.FPS)
 
     def draw_debug_info(self):
+        """Draw debug information on screen."""
         debug_font = pygame.font.SysFont("Arial", 16)
         y_pos = 10
+
+        # Draw current placement position
         if self.current_placement:
             row, col = self.current_placement
             text_surface = debug_font.render(
@@ -121,18 +141,23 @@ class BlockGameRenderer:
             )
             self.main_screen.blit(text_surface, (10, y_pos))
             y_pos += 20
+
+        # Draw current mouse position
         mouse_x, mouse_y = pygame.mouse.get_pos()
         text_surface = debug_font.render(
             f"Mouse: ({mouse_x},{mouse_y})", True, (255, 0, 0)
         )
         self.main_screen.blit(text_surface, (10, y_pos))
         y_pos += 20
+
+        # Draw grid dimensions
         dims = self.calculate_grid_dimensions()
         info = f"Grid pos: ({int(dims['grid_pos_x'])},{int(dims['grid_pos_y'])}) cell: {dims['square_side']:.1f}"
         text_surface = debug_font.render(info, True, (255, 0, 0))
         self.main_screen.blit(text_surface, (10, y_pos))
 
     def calculate_grid_dimensions(self):
+        """Calculate the grid dimensions based on the current window size."""
         width, height = self.main_screen.get_size()
         padding = height // 10
         grid_side = height - 2 * padding
@@ -209,7 +234,6 @@ class BlockGameRenderer:
                             highlight.fill((255, 255, 0, 128))
                             grid.blit(highlight, (x, y))
         self.main_screen.blit(grid, (dims["grid_pos_x"], dims["grid_pos_y"]))
-
     def draw_shapes(self):
         dims = self.calculate_grid_dimensions()
         square = dims["grid_pos_x"] / 11.5
@@ -239,6 +263,89 @@ class BlockGameRenderer:
                     text = self.make_font(24).render(key, True, (0, 0, 0))
                     rect = text.get_rect(center=(cx, centers[idx] - square * 1.5))
                     self.main_screen.blit(text, rect)
+
+        """Draw the available shapes on the side of the screen."""
+        dims = self.calculate_grid_dimensions()
+        grid_pos_x = dims["grid_pos_x"]
+        grid_pos_y = dims["grid_pos_y"]
+        grid_side = dims["grid_side"]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
+
+        # Size of each square in the shapes
+        square_side = grid_pos_x // 11.5
+
+        # Position for the shapes on the right side
+        shapes_margin = curr_main_width // 4
+        center_x = [shapes_margin, shapes_margin * 2, shapes_margin * 3]
+        center_y = (grid_pos_y * 1.5) + (grid_side + 4)
+
+        # Draw each available shape
+        for cshape in range(3):
+            # Check if shape index is valid
+            if cshape < len(self.game_state.current_shapes):
+                shape = self.game_state.current_shapes[cshape]
+                # Check if shape is valid
+                if shape and hasattr(shape, "form"):
+                    size = [len(shape.form), len(shape.form[0])]
+
+                    # Skip if this is the chosen shape for human play
+                    if cshape == self.chosen_shape:
+                        continue
+
+                    # Draw each block of the shape
+                    bounds = []
+                    for i in range(size[0]):
+                        for j in range(size[1]):
+                            if shape.form[i][j]:
+                                pos_x = (
+                                    center_x[cshape]
+                                    - (square_side * size[1] // 2)
+                                    + j * (square_side + 2)
+                                )
+                                pos_y = (
+                                    center_y
+                                    - (square_side * size[0] // 2)
+                                    + i * (square_side + 2)
+                                )
+
+                                # Draw the square
+                                square = pygame.Rect(
+                                    pos_x, pos_y, square_side, square_side
+                                )
+                                bg_square = pygame.Rect(
+                                    pos_x - 2,
+                                    pos_y - 2,
+                                    square_side + 4,
+                                    square_side + 4,
+                                )
+
+                                pygame.draw.rect(self.main_screen, (0, 0, 0), bg_square)
+                                pygame.draw.rect(self.main_screen, shape.color, square)
+
+                                bounds.append(square)
+
+                    shape.bound = pygame.Rect(
+                        min([b.left for b in bounds]),
+                        min([b.top for b in bounds]),
+                        max([b.right for b in bounds]) - min([b.left for b in bounds]),
+                        max([b.bottom for b in bounds]) - min([b.top for b in bounds]),
+                    )
+
+                    # No longer draw the hint 
+                    if False:
+                        # Draw key hint
+                        if cshape == 0:
+                            key_text = "E"
+                        elif cshape == 1:
+                            key_text = "R"
+                        else:
+                            key_text = "T"
+
+                        text = self.font.render(key_text, True, (0, 0, 0))
+                        text_rect = text.get_rect(
+                            center=(center_x, center_y[cshape] - square_side * 1.5)
+                        )
+                        self.main_screen.blit(text, text_rect)
 
     def draw_cursor(self):
         """Draw the chosen shape at the cursor position for human play."""
@@ -336,6 +443,7 @@ class BlockGameRenderer:
                         pygame.draw.rect(self.main_screen, shape.color, square)
 
     def draw_score(self):
+        """Draw the current score and high score."""
         dims = self.calculate_grid_dimensions()
         pad = dims["grid_padding"]
         width = self.main_screen.get_size()[0]
@@ -357,7 +465,28 @@ class BlockGameRenderer:
         r = text.get_rect(center=(width // 2, pad // 2))
         self.main_screen.blit(text, r)
 
+    def draw_time(self):
+        """Draw the current score and high score."""
+        dims = self.calculate_grid_dimensions()
+        grid_padding = dims["grid_padding"]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
+
+        # Draw high score
+        font_size = int(grid_padding / 2)
+        font_time = self.make_font(font_size)
+        try:
+            font_time = pygame.font.Font(r"Assets/LECO.ttf", font_size)
+        except:
+            font_time = pygame.font.SysFont("Arial", font_size)
+
+        text_time_title = font_time.render("Time", True, (255, 215, 0))
+        text_time_used = font_time.render(str(self.game_state.get_time()), True, (255, 215, 0))
+
+        self.main_screen.blit(text_time_title, (grid_padding // 3, curr_main_height // 2))
+        self.main_screen.blit(text_time_used, (grid_padding // 3, curr_main_height // 2 + grid_padding // 2))
+
     def draw_combos(self):
+        """Draw the combo information."""
         dims = self.calculate_grid_dimensions()
         pad = dims["grid_padding"]
         x = dims["grid_pos_x"]
@@ -375,6 +504,7 @@ class BlockGameRenderer:
         self.main_screen.blit(surf, ((x / 2) - screen_w / 2, (h / 2) - screen_h / 2))
 
     def draw_game_over(self):
+        """Draw game over overlay."""
         w, h = self.main_screen.get_size()
         self.game_over_alpha = min(150, self.game_over_alpha + self.TRANSITION_SPEED)
         overlay = pygame.Surface((w, h), pygame.SRCALPHA)
@@ -462,6 +592,9 @@ class BlockGameRenderer:
         action_taken = None
 
         for event in pygame.event.get():
+
+            print(f"Event: {event}")
+            
             if event.type == pygame.QUIT:
                 return "QUIT"  # tell the caller we want to quit
 
@@ -519,19 +652,30 @@ class BlockGameRenderer:
             # Handle mouse click for placement
             elif (
                 event.type == pygame.MOUSEBUTTONDOWN
-                and self.chosen_shape != -1
                 and not self.game_state.game_over
             ):
-                if self.current_placement is not None:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                for i in range(3):
+                    shape = self.game_state.current_shapes[i]
+                    if shape and hasattr(shape, "form") and hasattr(shape, "bound"):
+                        if (
+                            shape.bound.collidepoint(mouse_x, mouse_y)
+                            and i != self.chosen_shape
+                        ):
+                            self.chosen_shape = i
+                 
+                if self.chosen_shape != -1 and self.current_placement is not None:
                     row, col = self.current_placement
                     action_taken = (self.chosen_shape, row, col)
 
         return action_taken
 
     def get_rgb_array(self):
+        """Convert the pygame surface to a numpy array for the 'rgb_array' render mode."""
         return np.transpose(
             np.array(pygame.surfarray.pixels3d(self.main_screen)), axes=(1, 0, 2)
         )
 
     def close(self):
+        """Clean up pygame resources."""
         pygame.quit()
