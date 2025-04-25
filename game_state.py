@@ -392,6 +392,7 @@ class BlockGameState:
             # Reset combo if too many placements without clearing
             if self.placements_without_clear >= self.MAX_COMBO_STREAK:
                 self.combo_streak = False
+                self.combos[1] = 0
                 self.combos[2] = 0
                 self.placements_without_clear = 0
 
@@ -475,7 +476,7 @@ class BlockGameState:
             # Update combo streak
             if self.combos[2] > 0:
                 self.combos[1] += 1
-                
+
             self.combos[2] = 3
             self.combo_streak = True
         else:
