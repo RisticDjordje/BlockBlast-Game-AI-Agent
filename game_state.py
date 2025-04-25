@@ -79,7 +79,7 @@ class BlockGameState:
         # Game state tracking
         self.game_over = False
         self.combo_streak = False
-        self.combos = [["COMBO 0"], 0]
+        self.combos = [["COMBO 0"], 0, 0]
 
         # Combo tracking
         self.placements_without_clear = 0  # Count placements without clearing lines
@@ -392,8 +392,7 @@ class BlockGameState:
             # Reset combo if too many placements without clearing
             if self.placements_without_clear >= self.MAX_COMBO_STREAK:
                 self.combo_streak = False
-                self.combos[1] = 0
-                self.combos[0][-1] = "COMBO 0"
+                self.combos[2] = 0
                 self.placements_without_clear = 0
 
         # Generate new shapes if all current shapes are used
@@ -450,8 +449,10 @@ class BlockGameState:
         lines_cleared = len(rows_to_delete) + len(cols_to_delete)
         self.last_lines_cleared = lines_cleared
 
+        # Reset combo list 
+        self.combos[0] = []
+
         if lines_cleared:
-            self.combos[0] = []
 
             # Calculate bonus based on combos and number of lines cleared
             bonus = lines_cleared * 10 * (self.combos[1] + 1)
@@ -469,19 +470,19 @@ class BlockGameState:
                 bonus += 300
                 self.combos[0].insert(-1, "ALL CLEAR")
 
-            # Limit combo history
-            # self.combos[0] = self.combos[0][-8:]
-
-            # Update combo count - increase by the number of rows and columns cleared
-            self.combos[1] += 1 # lines_cleared
-            self.combos[0][-1] = f"COMBO {self.combos[1]}"
-            self.combo_streak = True
-
-            # Update score
             self.score += bonus
-        else:
-            self.combos[0] = [f"COMBO {self.combos[1]}"]
 
+            # Update combo streak
+            if self.combos[2] > 0:
+                self.combos[1] += 1
+                
+            self.combos[2] = 3
+            self.combo_streak = True
+        else:
+            self.combos[2] -= 1
+
+        self.combos[0] = [f"COMBO {self.combos[1]}"]
+            
         # Track score change for reward calculation
         self.last_action_score = self.score - score_before
         
@@ -590,7 +591,7 @@ class BlockGameState:
         self.displayed_score = 0
         self.game_over = False
         self.combo_streak = False
-        self.combos = [["COMBO 0"], 0]
+        self.combos = [["COMBO 0"], 0, 0]
         self.placements_without_clear = 0
         self.current_shapes = self.generate_valid_shapes()
         self.last_action_score = 0
