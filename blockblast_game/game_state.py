@@ -146,6 +146,39 @@ class BlockGameState:
 
         return True
 
+    def _can_place_on(self, grid, shape, row, col):
+        """Like can_place_shape, but tests against an explicit grid."""
+        h, w = len(shape.form), len(shape.form[0])
+        if row < 0 or col < 0 or row + h > 8 or col + w > 8:
+            return False
+        for i in range(h):
+            for j in range(w):
+                if shape.form[i][j] and grid[row + i][col + j]:
+                    return False
+        return True
+
+    def _simulate_on(self, grid, shape, position):
+        """Place & clear lines on a copy of grid, return the new grid."""
+        new = [r[:] for r in grid]
+        row, col = position
+        h, w = len(shape.form), len(shape.form[0])
+        # place
+        for i in range(h):
+            for j in range(w):
+                if shape.form[i][j]:
+                    new[row + i][col + j] = 1
+        # clear full rows
+        for r in range(8):
+            if all(new[r][c] for c in range(8)):
+                for c in range(8):
+                    new[r][c] = 0
+        # clear full cols
+        for c in range(8):
+            if all(new[r][c] for r in range(8)):
+                for r in range(8):
+                    new[r][c] = 0
+        return new
+
     def find_best_placement_for_shape(self, shape):
         """Find the best position to place a shape that might clear lines."""
         if not hasattr(shape, "form") or not shape.form:
@@ -216,91 +249,57 @@ class BlockGameState:
         return new_grid
 
     def generate_valid_shapes(self):
-        """Generate three shapes that can each be placed sequentially on the board."""
-        # Make copies to avoid modifying the original
-        remaining_forms = [i for i in range(len(self.FORMS))]
-
-        next_shapes = [0, 0, 0]  # Initialize with placeholders
+        """
+        Greedily pick 3 shapes so each one can be placed on the board
+        updated by the previous placement.
+        """
+        remaining = list(range(len(self.FORMS)))
+        next_shapes = []
         current_grid = [row[:] for row in self.grid]
 
-        for shape_index in range(3):
-            placeable_shape = None
-            attempts = 0
-
-            # Try to find a shape that can be placed
-            while placeable_shape is None and attempts < 100:
-                if not remaining_forms:
-                    # If we've exhausted all forms, start over
-                    remaining_forms = [i for i in range(len(self.FORMS))]
-
-                # Pick a random form
-                form_index = random.choice(remaining_forms)
-                remaining_forms.remove(form_index)
-
-                # Try each variant of this form
-                for variant_index in range(len(self.FORMS[form_index])):
-                    test_shape = self.Shape([form_index, variant_index])
-
-                    # Check if this shape can be placed anywhere
-                    for row in range(8 - len(test_shape.form) + 1):
-                        for col in range(8 - len(test_shape.form[0]) + 1):
-                            if self.can_place_shape(test_shape, row, col):
-                                placeable_shape = test_shape
-                                # Simulate placing this shape and clearing any lines
-                                current_grid = self.simulate_placement(
-                                    test_shape, (row, col)
+        for _ in range(3):
+            placed = False
+            random.shuffle(remaining)
+            for form_idx in remaining:
+                for var_idx in range(len(self.FORMS[form_idx])):
+                    shape = self.Shape([form_idx, var_idx])
+                    # find _any_ valid spot on current_grid
+                    for r in range(8 - len(shape.form) + 1):
+                        for c in range(8 - len(shape.form[0]) + 1):
+                            if self._can_place_on(current_grid, shape, r, c):
+                                # commit to this spot
+                                next_shapes.append(shape)
+                                current_grid = self._simulate_on(
+                                    current_grid, shape, (r, c)
                                 )
+                                placed = True
                                 break
-                        if placeable_shape:
+                        if placed:
                             break
-                    if placeable_shape:
+                    if placed:
                         break
+                if placed:
+                    remaining.remove(form_idx)
+                    break
 
-                attempts += 1
-
-            # If we couldn't find a placeable shape after many attempts, use a simple shape
-            if placeable_shape is None:
-                simple_shapes_indexes = [
-                    [0, 0],  # 2x2 square
-                    [7, 0],  # 2x1 rectangle
-                    [8, 0],  # 3x1 rectangle
-                ]
-
-                for shape_indices in simple_shapes_indexes:
-                    try:
-                        simple_shape = self.Shape([shape_indices[0], shape_indices[1]])
-
-                        # Check if this simple shape can be placed anywhere
-                        can_place = False
-                        for row in range(8 - len(simple_shape.form) + 1):
-                            for col in range(8 - len(simple_shape.form[0]) + 1):
-                                if self.can_place_shape(simple_shape, row, col):
-                                    can_place = True
-                                    current_grid = self.simulate_placement(
-                                        simple_shape, (row, col)
-                                    )
-                                    break
-                            if can_place:
-                                break
-
-                        if can_place:
-                            placeable_shape = simple_shape
+            if not placed:
+                # fallback to 1×1 if no multi-cell shape fits
+                one_by_one = self.Shape(-1)
+                # guaranteed to fit somewhere unless board is truly jammed
+                for r in range(8):
+                    for c in range(8):
+                        if self._can_place_on(current_grid, one_by_one, r, c):
+                            next_shapes.append(one_by_one)
+                            current_grid = self._simulate_on(
+                                current_grid, one_by_one, (r, c)
+                            )
+                            placed = True
                             break
-                    except Exception:
-                        continue
-
-            # If we still couldn't find a shape (board is nearly full), create a 1x1 shape
-            if placeable_shape is None:
-                try:
-                    # Create a custom 1x1 shape as a last resort
-                    one_by_one = self.Shape(-1)  # Using -1 as a special signal
-                    placeable_shape = one_by_one
-                except Exception:
-                    # If all else fails, keep the placeholder
-                    continue
-
-            # Update the shape in our list
-            next_shapes[shape_index] = placeable_shape
+                    if placed:
+                        break
+                # if even that fails, just append it anyway
+                if not placed:
+                    next_shapes.append(one_by_one)
 
         return next_shapes
 
@@ -557,12 +556,12 @@ class BlockGameState:
 
     def get_high_score(self):
         """Get the high score from file."""
-        if not os.path.exists("high_score.txt"):
+        if not os.path.exists("blockblast_game/high_score.txt"):
             self.save_score(0)
             return 0
 
         try:
-            with open("high_score.txt", "r") as f:
+            with open("blockblast_game/high_score.txt", "r") as f:
                 score = f.read().strip()
                 return int(score) if score.isdigit() else 0
         except (FileNotFoundError, ValueError):
@@ -571,7 +570,7 @@ class BlockGameState:
 
     def save_score(self, score):
         """Save a score to the high score file."""
-        with open("high_score.txt", "w") as file:
+        with open("blockblast_game/high_score.txt", "w") as file:
             file.write(str(score))
 
     def get_time(self):

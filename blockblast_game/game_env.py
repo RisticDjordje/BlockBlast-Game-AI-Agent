@@ -1,7 +1,7 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from game_state import BlockGameState
+from .game_state import BlockGameState
 
 
 class BlockGameEnv(gym.Env):
@@ -45,7 +45,7 @@ class BlockGameEnv(gym.Env):
 
         if self.render_mode == "human":
             # Import here to avoid PyGame dependency if not rendering
-            from game_renderer import BlockGameRenderer
+            from .game_renderer import BlockGameRenderer
 
             self.renderer = BlockGameRenderer(self.game_state)
 

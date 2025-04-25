@@ -5,4 +5,7 @@
 high_score.txt
 .DS_Store
 models/evaluations.npz
-/trained
+/agents/trained
+*.pyc
+/agents/logs
+/agent_comparison/results
