@@ -1,4 +1,6 @@
+import argparse
 import os
+import sys
 import time
 import numpy as np
 
@@ -133,12 +135,44 @@ def train_masked_dqn(total_timesteps: int = 500_000, continue_training: bool = F
     return model
 
 
-if __name__ == "__main__":
-    total_timesteps = 20_000_000
-    continue_training = False
-    do_train = True
-    do_visualize = True
+def get_args():
+    """
+        arguments parser in main function
+        python -m agents/dqn_*_agent.py -c -v -m -t 1200000
+    """
+    parser = argparse.ArgumentParser()
+    parser.description='please enter optional parameters: train, visualize, continue, timestamp ...'
+    # add_argument:
+    # default: total_timesteps(20_000_000), do_train(true), do_visualize(true), continue_training(false)
+    parser.add_argument("-t", "--timesteps", help="total_timesteps for training", dest="total_timesteps", type=int, default=20_000_000)
+    parser.add_argument("-m", "--train", help="train mode", dest="do_train", action="store_false") 
+    parser.add_argument("-v", "--visualize", help="visualize result", dest="do_visualize", action="store_false") 
+    parser.add_argument("-c", "--continue", help="continue training or not", dest="continue_training", action="store_true") 
 
+    # parser result
+    args = parser.parse_args()
+
+    return args
+
+if __name__ == "__main__":
+    """
+        Main function for agent training and visualizing
+    """
+    # args parsing
+    args = get_args()
+    total_timesteps = args.total_timesteps
+    continue_training = args.continue_training
+    do_train = args.do_train
+    do_visualize = args.do_visualize
+
+    print(f'[INFO] Args:\n\t{total_timesteps=}\n\t{continue_training=}\n\t{do_train=}\n\t{do_visualize=}')
+    # user confirmation
+    user_confirm = input("[Note] Are you sure? (y/n) ")
+    if user_confirm.lower() == "n":
+        print("[WARNING] Please input the args again. Exiting !")
+        sys.exit(1)
+    
+    # start to execute main process
     if do_train:
         train_masked_dqn(total_timesteps, continue_training)
 
