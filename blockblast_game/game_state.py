@@ -470,6 +470,8 @@ class BlockGameState:
 
             # Update score
             self.score += bonus
+            if self.score > self.highest_score:
+                self.highest_score = self.score
 
         # Track score change for reward calculation
         self.last_action_score = self.score - score_before
@@ -563,7 +565,7 @@ class BlockGameState:
 
     def reset(self):
         """Reset the game state."""
-        if self.score > self.highest_score:
+        if self.score >= self.highest_score:
             self.save_score(self.score)
 
         self.grid = [[0, 0, 0, 0, 0, 0, 0, 0] for _ in range(8)]
