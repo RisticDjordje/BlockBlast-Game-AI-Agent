@@ -23,7 +23,7 @@ class BlockGameRenderer:
 
         # Constants
         self.INIT_WIDTH = 1200
-        self.INIT_HEIGHT = 800
+        self.INIT_HEIGHT = 900
         self.BACKGROUND_COLOR = (220, 220, 220)
         self.FPS = fps
         self.grid_line_width = 2
@@ -213,9 +213,11 @@ class BlockGameRenderer:
     def draw_shapes(self):
         dims = self.calculate_grid_dimensions()
         square = dims["grid_pos_x"] / 11.5
-        cx = dims["grid_pos_x"] * 1.5 + dims["grid_side"] + 4
-        my = self.main_screen.get_size()[1] // 4
-        centers = [my, my * 2, my * 3]
+
+        cx = dims["grid_pos_x"] + dims["grid_side"] / 6
+        dx = dims["grid_side"] / 3
+        cy = dims["grid_pos_y"] + dims["grid_side"] + square * 2
+
         for idx in range(3):
             if idx < len(self.game_state.current_shapes):
                 shape = self.game_state.current_shapes[idx]
@@ -227,14 +229,12 @@ class BlockGameRenderer:
                     for i, row in enumerate(shape.form):
                         for j, val in enumerate(row):
                             if val:
-                                x = cx - (square * len(row) // 2) + j * (square + 2)
-                                y = (
-                                    centers[idx]
-                                    - (square * len(shape.form) // 2)
-                                    + i * (square + 2)
-                                )
+                                x = cx - (square * len(row) // 2) + j * (square + 2) + idx * dx
+                                y = cy - (square * len(shape.form) // 2) + i * (square + 2)
+
                                 bg = pygame.Rect(x - 2, y - 2, square + 4, square + 4)
                                 fg = pygame.Rect(x, y, square, square)
+
                                 blocks.append(fg)
 
                                 pygame.draw.rect(self.main_screen, (0, 0, 0), bg)
