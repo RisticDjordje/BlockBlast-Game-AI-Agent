@@ -25,6 +25,7 @@ class BlockGameRenderer:
         self.INIT_WIDTH = 1200
         self.INIT_HEIGHT = 900
         self.BACKGROUND_COLOR = (220, 220, 220)
+        self.FONT_COLOR = (255, 215, 0)
         self.FPS = fps
         self.grid_line_width = 2
 
@@ -352,36 +353,40 @@ class BlockGameRenderer:
         fs = int(pad / 2)
         font_high = self.make_font(fs)
         self.main_screen.blit(
-            font_high.render("HIGH SCORE", True, (135, 135, 135)), (pad // 3, pad // 6)
+            font_high.render("HIGH SCORE", True, self.FONT_COLOR), (pad // 3, pad // 6)
         )
         self.main_screen.blit(
-            font_high.render(str(self.game_state.highest_score), True, (135, 135, 135)),
+            font_high.render(str(self.game_state.highest_score), True, self.FONT_COLOR),
             (pad // 3, pad // 1.3),
         )
         # Current score
         fs = int(pad / 1.3)
         font_sc = self.make_font(fs)
         self.displayed_score = self.game_state.score
-        text = font_sc.render(str(int(self.displayed_score)), True, (135, 135, 135))
+        text = font_sc.render(str(int(self.displayed_score)), True, self.FONT_COLOR)
         r = text.get_rect(center=(width // 2, pad // 2))
         self.main_screen.blit(text, r)
 
     def draw_combos(self):
         dims = self.calculate_grid_dimensions()
+
         pad = dims["grid_padding"]
-        x = dims["grid_pos_x"]
+        x = dims["grid_pos_x"] + dims["grid_side"] + pad // 10
         h = self.main_screen.get_size()[1]
-        screen_w = x - pad // 5
-        screen_h = x - pad // 2
+
+        screen_w = dims["grid_pos_x"] - pad // 5
+        screen_h = dims["grid_pos_x"] - pad // 2
+        
         surf = pygame.Surface((screen_w, screen_h))
         surf.fill(self.BACKGROUND_COLOR)
+
         for i, msg in enumerate(reversed(self.game_state.combos[0])):
             font = self.make_font(int(pad / 3))
             surf.blit(
-                font.render(msg, True, (135, 135, 135)),
+                font.render(msg, True, self.FONT_COLOR),
                 (0, screen_h - font.get_linesize() * (i + 1)),
             )
-        self.main_screen.blit(surf, ((x / 2) - screen_w / 2, (h / 2) - screen_h / 2))
+        self.main_screen.blit(surf, (x, (h / 2) - screen_h / 2))
 
     def draw_game_over(self):
         w, h = self.main_screen.get_size()
@@ -426,8 +431,6 @@ class BlockGameRenderer:
 
         text_time_title = font_time.render("Time", True, (255, 215, 0))
         text_time_used = font_time.render(str(self.game_state.get_duration()), True, (255, 215, 0))
-
-        print(str(self.game_state.get_duration()))
 
         self.main_screen.blit(text_time_title, (grid_padding // 3, curr_main_height // 2))
         self.main_screen.blit(text_time_used, (grid_padding // 3, curr_main_height // 2 + grid_padding // 2))
