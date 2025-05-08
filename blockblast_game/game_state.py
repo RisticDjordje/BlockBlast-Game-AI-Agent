@@ -1,6 +1,7 @@
 import copy
 import os
 import random
+from datetime import datetime
 
 
 class BlockGameState:
@@ -101,6 +102,8 @@ class BlockGameState:
             5: "PENTA ",
             6: "HEXA ",
         }
+
+        self.start_time = datetime.now()
 
     class Shape:
         """Represents a game piece with a form and color."""
@@ -554,6 +557,10 @@ class BlockGameState:
         with open("blockblast_game/high_score.txt", "w") as file:
             file.write(str(score))
 
+    def get_duration(self):
+        """Get the duration of the game in seconds."""
+        return int((datetime.now() - self.start_time).total_seconds())
+
     def reset(self):
         """Reset the game state."""
         if self.score > self.highest_score:
@@ -570,3 +577,4 @@ class BlockGameState:
         self.last_action_score = 0
         self.last_lines_cleared = 0
         self.highest_score = self.get_high_score()
+        self.start_time = datetime.now()

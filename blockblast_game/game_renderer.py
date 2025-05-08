@@ -94,6 +94,7 @@ class BlockGameRenderer:
         self.draw_shapes()
         self.draw_score()
         self.draw_combos()
+        self.draw_time()
 
         if self.chosen_shape != -1:
             self.draw_cursor()
@@ -414,6 +415,22 @@ class BlockGameRenderer:
             "Press SPACE to restart", True, (0, 0, 0)
         )
         self.main_screen.blit(hint, hint.get_rect(center=rect.center))
+
+    def draw_time(self):
+        dims = self.calculate_grid_dimensions()
+        grid_padding = dims["grid_padding"]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
+
+        font_size = int(grid_padding / 2)
+        font_time = self.make_font(font_size)
+
+        text_time_title = font_time.render("Time", True, (255, 215, 0))
+        text_time_used = font_time.render(str(self.game_state.get_duration()), True, (255, 215, 0))
+
+        print(str(self.game_state.get_duration()))
+
+        self.main_screen.blit(text_time_title, (grid_padding // 3, curr_main_height // 2))
+        self.main_screen.blit(text_time_used, (grid_padding // 3, curr_main_height // 2 + grid_padding // 2))
 
     def fade_in(self):
         """Fade in transition effect."""
