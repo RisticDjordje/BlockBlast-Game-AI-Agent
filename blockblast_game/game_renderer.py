@@ -222,6 +222,8 @@ class BlockGameRenderer:
                 if hasattr(shape, "form"):
                     if idx == self.chosen_shape:
                         continue
+
+                    blocks = []
                     for i, row in enumerate(shape.form):
                         for j, val in enumerate(row):
                             if val:
@@ -233,12 +235,18 @@ class BlockGameRenderer:
                                 )
                                 bg = pygame.Rect(x - 2, y - 2, square + 4, square + 4)
                                 fg = pygame.Rect(x, y, square, square)
+                                blocks.append(fg)
+
                                 pygame.draw.rect(self.main_screen, (0, 0, 0), bg)
                                 pygame.draw.rect(self.main_screen, shape.color, fg)
-                    key = ["E", "R", "T"][idx]
-                    text = self.make_font(24).render(key, True, (0, 0, 0))
-                    rect = text.get_rect(center=(cx, centers[idx] - square * 1.5))
-                    self.main_screen.blit(text, rect)
+                                
+                    if not hasattr(shape, "boundary"):
+                        shape.boundary = pygame.Rect(
+                            min(blocks, key=lambda r: r.left).left,
+                            min(blocks, key=lambda r: r.top).top,
+                            max(blocks, key=lambda r: r.right).right - min(blocks, key=lambda r: r.left).left,
+                            max(blocks, key=lambda r: r.bottom).bottom - min(blocks, key=lambda r: r.top).top,
+                        )
 
     def draw_cursor(self):
         """Draw the chosen shape at the cursor position for human play."""
@@ -492,28 +500,6 @@ class BlockGameRenderer:
                     self.game_over_alpha = 0
                     return "RESET"
 
-                # Select shapes using E, R, T keys
-                if (
-                    event.key in [pygame.K_e, pygame.K_r, pygame.K_t]
-                    and not self.game_state.game_over
-                ):
-                    mapping = {pygame.K_e: 0, pygame.K_r: 1, pygame.K_t: 2}
-                    shape_idx = mapping[event.key]
-
-                    # Toggle selection
-                    if shape_idx == self.chosen_shape:
-                        self.chosen_shape = -1
-                    else:
-                        # Check if shape is valid
-                        if (
-                            shape_idx < len(self.game_state.current_shapes)
-                            and self.game_state.current_shapes[shape_idx]
-                            and hasattr(
-                                self.game_state.current_shapes[shape_idx], "form"
-                            )
-                        ):
-                            self.chosen_shape = shape_idx
-
                 # Space to place shape (alternative to mouse click)
                 if (
                     event.key == pygame.K_SPACE
@@ -527,10 +513,21 @@ class BlockGameRenderer:
             # Handle mouse click for placement
             elif (
                 event.type == pygame.MOUSEBUTTONDOWN
-                and self.chosen_shape != -1
                 and not self.game_state.game_over
             ):
-                if self.current_placement is not None:
+                for idx, shape in enumerate(self.game_state.current_shapes):
+                    if (
+                        idx != self.chosen_shape
+                        and hasattr(shape, "form")
+                        and shape.boundary.collidepoint(event.pos)
+                    ):
+                        self.chosen_shape = idx
+                        return None
+
+                if (
+                    self.chosen_shape != -1
+                    and self.current_placement is not None
+                ):
                     row, col = self.current_placement
                     action_taken = (self.chosen_shape, row, col)
 
