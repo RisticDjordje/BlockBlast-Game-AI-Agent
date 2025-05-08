@@ -346,19 +346,24 @@ class BlockGameRenderer:
                         pygame.draw.rect(self.main_screen, shape.color, square)
 
     def draw_score(self):
-        dims = self.calculate_grid_dimensions()
+        dims = self.calculate_grid_dimensions();
+
         pad = dims["grid_padding"]
         width = self.main_screen.get_size()[0]
+        
         # High score
+        x_hs = dims["grid_pos_x"] + dims["grid_side"] + pad // 10
+
         fs = int(pad / 2)
         font_high = self.make_font(fs)
         self.main_screen.blit(
-            font_high.render("HIGH SCORE", True, self.FONT_COLOR), (pad // 3, pad // 6)
+            font_high.render("HIGH SCORE", True, self.FONT_COLOR), (x_hs - pad // 4, pad // 6)
         )
         self.main_screen.blit(
             font_high.render(str(self.game_state.highest_score), True, self.FONT_COLOR),
-            (pad // 3, pad // 1.3),
+            (x_hs, pad // 1.1),
         )
+
         # Current score
         fs = int(pad / 1.3)
         font_sc = self.make_font(fs)
