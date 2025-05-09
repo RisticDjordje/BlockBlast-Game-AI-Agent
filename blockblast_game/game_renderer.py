@@ -23,8 +23,9 @@ class BlockGameRenderer:
 
         # Constants
         self.INIT_WIDTH = 1200
-        self.INIT_HEIGHT = 800
+        self.INIT_HEIGHT = 900
         self.BACKGROUND_COLOR = (220, 220, 220)
+        self.FONT_COLOR = (255, 215, 0)
         self.FPS = fps
         self.grid_line_width = 2
 
@@ -94,6 +95,7 @@ class BlockGameRenderer:
         self.draw_shapes()
         self.draw_score()
         self.draw_combos()
+        self.draw_time()
 
         if self.chosen_shape != -1:
             self.draw_cursor()
@@ -213,32 +215,40 @@ class BlockGameRenderer:
     def draw_shapes(self):
         dims = self.calculate_grid_dimensions()
         square = dims["grid_pos_x"] / 11.5
-        cx = dims["grid_pos_x"] * 1.5 + dims["grid_side"] + 4
-        my = self.main_screen.get_size()[1] // 4
-        centers = [my, my * 2, my * 3]
+
+        cx = dims["grid_pos_x"] + dims["grid_side"] / 6
+        dx = dims["grid_side"] / 3
+        cy = dims["grid_pos_y"] + dims["grid_side"] + square * 2
+
         for idx in range(3):
             if idx < len(self.game_state.current_shapes):
                 shape = self.game_state.current_shapes[idx]
                 if hasattr(shape, "form"):
                     if idx == self.chosen_shape:
                         continue
+
+                    blocks = []
                     for i, row in enumerate(shape.form):
                         for j, val in enumerate(row):
                             if val:
-                                x = cx - (square * len(row) // 2) + j * (square + 2)
-                                y = (
-                                    centers[idx]
-                                    - (square * len(shape.form) // 2)
-                                    + i * (square + 2)
-                                )
+                                x = cx - (square * len(row) // 2) + j * (square + 2) + idx * dx
+                                y = cy - (square * len(shape.form) // 2) + i * (square + 2)
+
                                 bg = pygame.Rect(x - 2, y - 2, square + 4, square + 4)
                                 fg = pygame.Rect(x, y, square, square)
+
+                                blocks.append(fg)
+
                                 pygame.draw.rect(self.main_screen, (0, 0, 0), bg)
                                 pygame.draw.rect(self.main_screen, shape.color, fg)
-                    key = ["E", "R", "T"][idx]
-                    text = self.make_font(24).render(key, True, (0, 0, 0))
-                    rect = text.get_rect(center=(cx, centers[idx] - square * 1.5))
-                    self.main_screen.blit(text, rect)
+                                
+                    if not hasattr(shape, "boundary"):
+                        shape.boundary = pygame.Rect(
+                            min(blocks, key=lambda r: r.left).left,
+                            min(blocks, key=lambda r: r.top).top,
+                            max(blocks, key=lambda r: r.right).right - min(blocks, key=lambda r: r.left).left,
+                            max(blocks, key=lambda r: r.bottom).bottom - min(blocks, key=lambda r: r.top).top,
+                        )
 
     def draw_cursor(self):
         """Draw the chosen shape at the cursor position for human play."""
@@ -336,43 +346,52 @@ class BlockGameRenderer:
                         pygame.draw.rect(self.main_screen, shape.color, square)
 
     def draw_score(self):
-        dims = self.calculate_grid_dimensions()
+        dims = self.calculate_grid_dimensions();
+
         pad = dims["grid_padding"]
         width = self.main_screen.get_size()[0]
+        
         # High score
+        x_hs = dims["grid_pos_x"] + dims["grid_side"] + pad // 10
+
         fs = int(pad / 2)
         font_high = self.make_font(fs)
         self.main_screen.blit(
-            font_high.render("HIGH SCORE", True, (135, 135, 135)), (pad // 3, pad // 6)
+            font_high.render("HIGH SCORE", True, self.FONT_COLOR), (x_hs - pad // 4, pad // 6)
         )
         self.main_screen.blit(
-            font_high.render(str(self.game_state.highest_score), True, (135, 135, 135)),
-            (pad // 3, pad // 1.3),
+            font_high.render(str(self.game_state.highest_score), True, self.FONT_COLOR),
+            (x_hs, pad // 1.1),
         )
+
         # Current score
         fs = int(pad / 1.3)
         font_sc = self.make_font(fs)
         self.displayed_score = self.game_state.score
-        text = font_sc.render(str(int(self.displayed_score)), True, (135, 135, 135))
+        text = font_sc.render(str(int(self.displayed_score)), True, self.FONT_COLOR)
         r = text.get_rect(center=(width // 2, pad // 2))
         self.main_screen.blit(text, r)
 
     def draw_combos(self):
         dims = self.calculate_grid_dimensions()
+
         pad = dims["grid_padding"]
-        x = dims["grid_pos_x"]
+        x = dims["grid_pos_x"] + dims["grid_side"] + pad // 10
         h = self.main_screen.get_size()[1]
-        screen_w = x - pad // 5
-        screen_h = x - pad // 2
+
+        screen_w = dims["grid_pos_x"] - pad // 5
+        screen_h = dims["grid_pos_x"] - pad // 2
+        
         surf = pygame.Surface((screen_w, screen_h))
         surf.fill(self.BACKGROUND_COLOR)
+
         for i, msg in enumerate(reversed(self.game_state.combos[0])):
             font = self.make_font(int(pad / 3))
             surf.blit(
-                font.render(msg, True, (135, 135, 135)),
+                font.render(msg, True, self.FONT_COLOR),
                 (0, screen_h - font.get_linesize() * (i + 1)),
             )
-        self.main_screen.blit(surf, ((x / 2) - screen_w / 2, (h / 2) - screen_h / 2))
+        self.main_screen.blit(surf, (x, (h / 2) - screen_h / 2))
 
     def draw_game_over(self):
         w, h = self.main_screen.get_size()
@@ -406,6 +425,20 @@ class BlockGameRenderer:
             "Press SPACE to restart", True, (0, 0, 0)
         )
         self.main_screen.blit(hint, hint.get_rect(center=rect.center))
+
+    def draw_time(self):
+        dims = self.calculate_grid_dimensions()
+        grid_padding = dims["grid_padding"]
+        curr_main_width, curr_main_height = self.main_screen.get_size()
+
+        font_size = int(grid_padding / 2)
+        font_time = self.make_font(font_size)
+
+        text_time_title = font_time.render("Time", True, (255, 215, 0))
+        text_time_used = font_time.render(str(self.game_state.get_duration()), True, (255, 215, 0))
+
+        self.main_screen.blit(text_time_title, (grid_padding // 3, curr_main_height // 2))
+        self.main_screen.blit(text_time_used, (grid_padding // 3, curr_main_height // 2 + grid_padding // 2))
 
     def fade_in(self):
         """Fade in transition effect."""
@@ -492,28 +525,6 @@ class BlockGameRenderer:
                     self.game_over_alpha = 0
                     return "RESET"
 
-                # Select shapes using E, R, T keys
-                if (
-                    event.key in [pygame.K_e, pygame.K_r, pygame.K_t]
-                    and not self.game_state.game_over
-                ):
-                    mapping = {pygame.K_e: 0, pygame.K_r: 1, pygame.K_t: 2}
-                    shape_idx = mapping[event.key]
-
-                    # Toggle selection
-                    if shape_idx == self.chosen_shape:
-                        self.chosen_shape = -1
-                    else:
-                        # Check if shape is valid
-                        if (
-                            shape_idx < len(self.game_state.current_shapes)
-                            and self.game_state.current_shapes[shape_idx]
-                            and hasattr(
-                                self.game_state.current_shapes[shape_idx], "form"
-                            )
-                        ):
-                            self.chosen_shape = shape_idx
-
                 # Space to place shape (alternative to mouse click)
                 if (
                     event.key == pygame.K_SPACE
@@ -527,10 +538,21 @@ class BlockGameRenderer:
             # Handle mouse click for placement
             elif (
                 event.type == pygame.MOUSEBUTTONDOWN
-                and self.chosen_shape != -1
                 and not self.game_state.game_over
             ):
-                if self.current_placement is not None:
+                for idx, shape in enumerate(self.game_state.current_shapes):
+                    if (
+                        idx != self.chosen_shape
+                        and hasattr(shape, "form")
+                        and shape.boundary.collidepoint(event.pos)
+                    ):
+                        self.chosen_shape = idx
+                        return None
+
+                if (
+                    self.chosen_shape != -1
+                    and self.current_placement is not None
+                ):
                     row, col = self.current_placement
                     action_taken = (self.chosen_shape, row, col)
 

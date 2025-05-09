@@ -1,6 +1,7 @@
 import copy
 import os
 import random
+from datetime import datetime
 
 
 class BlockGameState:
@@ -101,6 +102,8 @@ class BlockGameState:
             5: "PENTA ",
             6: "HEXA ",
         }
+
+        self.start_time = datetime.now()
 
     class Shape:
         """Represents a game piece with a form and color."""
@@ -374,22 +377,29 @@ class BlockGameState:
         self.current_shapes[shape_idx] = 0
 
         # Update the grid (clear lines, calculate score)
-        lines_cleared = self.update_grid()
+        lines_cleared, all_clear = self.update_grid()
 
         # Update combo streak tracking
         if lines_cleared > 0:
             # Reset the counter when lines are cleared
             self.placements_without_clear = 0
+
+            if not self.combo_streak:
+                self.combo_streak = True
+            else:
+                self.combos[1] += 1
         else:
             # Increment the counter when no lines are cleared
             self.placements_without_clear += 1
 
             # Reset combo if too many placements without clearing
             if self.placements_without_clear >= self.MAX_COMBO_STREAK:
-                self.combo_streak = False
                 self.combos[1] = 0
-                self.combos[0][-1] = "COMBO 0"
+                self.combo_streak = False
                 self.placements_without_clear = 0
+
+        # Update score 
+        self.update_score(lines_cleared, all_clear)
 
         # Generate new shapes if all current shapes are used
         new_shapes_generated = False
@@ -404,9 +414,7 @@ class BlockGameState:
 
     def update_grid(self):
         """Clear completed rows/columns and update score."""
-        self.last_lines_cleared = 0
-        score_before = self.score
-
+        
         # Find rows and columns to delete
         rows_to_delete = []
         cols_to_delete = []
@@ -437,10 +445,16 @@ class BlockGameState:
                     break
             if not all_clear:
                 break
-
-        # Update score
+        
+        # Return grid updation
         lines_cleared = len(rows_to_delete) + len(cols_to_delete)
         self.last_lines_cleared = lines_cleared
+
+        return lines_cleared, all_clear
+
+    def update_score(self, lines_cleared, all_clear):
+        score_before = self.score
+        self.combos[0] = [f"COMBO {self.combos[1]}"]
 
         if lines_cleared:
             # Calculate bonus based on combos and number of lines cleared
@@ -457,16 +471,10 @@ class BlockGameState:
                 bonus += 300
                 self.combos[0].insert(-1, "ALL CLEAR +300")
 
-            # Limit combo history
-            self.combos[0] = self.combos[0][-8:]
-
-            # Update combo count - increase by the number of rows and columns cleared
-            self.combos[1] += lines_cleared
-            self.combos[0][-1] = f"COMBO {self.combos[1]}"
-            self.combo_streak = True
-
             # Update score
             self.score += bonus
+            if self.score > self.highest_score:
+                self.highest_score = self.score
 
         # Track score change for reward calculation
         self.last_action_score = self.score - score_before
@@ -554,9 +562,13 @@ class BlockGameState:
         with open("blockblast_game/high_score.txt", "w") as file:
             file.write(str(score))
 
+    def get_duration(self):
+        """Get the duration of the game in seconds."""
+        return int((datetime.now() - self.start_time).total_seconds())
+
     def reset(self):
         """Reset the game state."""
-        if self.score > self.highest_score:
+        if self.score >= self.highest_score:
             self.save_score(self.score)
 
         self.grid = [[0, 0, 0, 0, 0, 0, 0, 0] for _ in range(8)]
@@ -570,3 +582,4 @@ class BlockGameState:
         self.last_action_score = 0
         self.last_lines_cleared = 0
         self.highest_score = self.get_high_score()
+        self.start_time = datetime.now()
