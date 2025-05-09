@@ -377,22 +377,29 @@ class BlockGameState:
         self.current_shapes[shape_idx] = 0
 
         # Update the grid (clear lines, calculate score)
-        lines_cleared = self.update_grid()
+        lines_cleared, all_clear = self.update_grid()
 
         # Update combo streak tracking
         if lines_cleared > 0:
             # Reset the counter when lines are cleared
             self.placements_without_clear = 0
+
+            if not self.combo_streak:
+                self.combo_streak = True
+            else:
+                self.combos[1] += 1
         else:
             # Increment the counter when no lines are cleared
             self.placements_without_clear += 1
 
             # Reset combo if too many placements without clearing
             if self.placements_without_clear >= self.MAX_COMBO_STREAK:
-                self.combo_streak = False
                 self.combos[1] = 0
-                self.combos[0][-1] = "COMBO 0"
+                self.combo_streak = False
                 self.placements_without_clear = 0
+
+        # Update score 
+        self.update_score(lines_cleared, all_clear)
 
         # Generate new shapes if all current shapes are used
         new_shapes_generated = False
@@ -407,9 +414,7 @@ class BlockGameState:
 
     def update_grid(self):
         """Clear completed rows/columns and update score."""
-        self.last_lines_cleared = 0
-        score_before = self.score
-
+        
         # Find rows and columns to delete
         rows_to_delete = []
         cols_to_delete = []
@@ -440,10 +445,16 @@ class BlockGameState:
                     break
             if not all_clear:
                 break
-
-        # Update score
+        
+        # Return grid updation
         lines_cleared = len(rows_to_delete) + len(cols_to_delete)
         self.last_lines_cleared = lines_cleared
+
+        return lines_cleared, all_clear
+
+    def update_score(self, lines_cleared, all_clear):
+        score_before = self.score
+        self.combos[0] = [f"COMBO {self.combos[1]}"]
 
         if lines_cleared:
             # Calculate bonus based on combos and number of lines cleared
@@ -459,14 +470,6 @@ class BlockGameState:
             if all_clear:
                 bonus += 300
                 self.combos[0].insert(-1, "ALL CLEAR +300")
-
-            # Limit combo history
-            self.combos[0] = self.combos[0][-8:]
-
-            # Update combo count - increase by the number of rows and columns cleared
-            self.combos[1] += lines_cleared
-            self.combos[0][-1] = f"COMBO {self.combos[1]}"
-            self.combo_streak = True
 
             # Update score
             self.score += bonus
